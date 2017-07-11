@@ -87,6 +87,9 @@ var up = new DbpUpload({
     trigger: 'MyUpDemo',
     onSuccess: function(res, trigger, event) {
         console.log(res);
+    },
+    onError: function(a, b, c) {
+
     }
 });
 
@@ -95,5 +98,8 @@ var ups = new DbpUpload({
     trigger: 'MyUpDemos',
     onSuccess: function(res, trigger, event) {
         console.log(res);
+    },
+    onError: function(a, b, c) {
+
     }
 });
