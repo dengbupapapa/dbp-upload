@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>客户端上传原理demo</title>
+</head>
+<style>
+    html,body{
+        height: 100%;
+    }
+</style>
+<body>
+    <div>
+        <input id="files" type="file" onchange="previewImage(this, 'prvid')" multiple="multiple">
+    　　<div id="prvid">预览容器</div>
+    </div>
+
+    <a id="MyUpDemo">UpDemo</a>
+    <a id="MyUpDemos">UpDemos</a>
+    <script type="text/javascript" src="./dbp-webupload.js"></script>
+    <script type="text/javascript" src="./index.js"></script>
+</body>
+</html>

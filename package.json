@@ -1,0 +1,19 @@
+{
+  "name": "upload",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "body-parser": "^1.17.2",
+    "express": "^4.15.3",
+    "fine-uploader": "^5.14.5",
+    "morgan": "^1.8.2",
+    "multiparty": "^4.1.3"
+  }
+}
