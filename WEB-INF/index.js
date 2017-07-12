@@ -93,13 +93,13 @@ var up = new DbpUpload({
     }
 });
 
-var ups = new DbpUpload({
-    url: '/upload',
-    trigger: 'MyUpDemos',
-    onSuccess: function(res, trigger, event) {
-        console.log(res);
-    },
-    onError: function(a, b, c) {
+// var ups = new DbpUpload({
+//     url: '/upload',
+//     trigger: 'MyUpDemos',
+//     onSuccess: function(res, trigger, event) {
+//         console.log(res);
+//     },
+//     onError: function(a, b, c) {
 
-    }
-});
+//     }
+// });

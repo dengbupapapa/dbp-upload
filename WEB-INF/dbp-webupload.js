@@ -34,25 +34,25 @@ var DbpUpload = (function() {
 
     var hasUseFormDate = (function() { //判断是否支持h5 FormDate
 
-        if (window.FormData) {
+        // if (window.FormData) {
 
-            return function(trigger) {
+        //     return function(trigger) {
 
-                var _seed = createSeed();
-                createFileInput.call(this, this.opts.iframeSignPrefix + 'input-' + _seed, trigger) //创建iframe
+        //         var _seed = createSeed();
+        //         createFileInput.call(this, this.opts.iframeSignPrefix + 'input-' + _seed, trigger) //创建iframe
 
-            }
+        //     }
 
-        } else {
+        // } else {
 
-            return function(trigger) {
+        return function(trigger) {
 
-                var _seed = createSeed();
-                createIframe(this.opts.iframeSignPrefix + 'iframe-' + _seed, trigger, this) //创建iframe
-
-            }
+            var _seed = createSeed();
+            createIframe(this.opts.iframeSignPrefix + 'iframe-' + _seed, trigger, this) //创建iframe
 
         }
+
+        // }
 
     })()
 
@@ -147,14 +147,42 @@ var DbpUpload = (function() {
 
         insertAfter(_iframeDom, trigger); //插到目标按钮之后
 
+        if (iframeShouldNeedLoad.call(selfArg, iframeSeed)) { //判断iframe 是否需要加载
+
+            addEvent(_iframeDom, 'load', function(e) { //iframe加载成功之后
+
+                removeEvent(_iframeDom, 'load', null); //加载完之后就移除该事件，以免和上传后load事件有兼容问题出现
+
+                iframeDomInsertAfterLater.call(selfArg, _iframeDom, iframeSeed);
+
+            });
+
+        } else {
+
+            iframeDomInsertAfterLater.call(selfArg, _iframeDom, iframeSeed);
+
+        }
+
+        // return _iframeDom
+
+    }
+
+    function iframeShouldNeedLoad(iframeSeed) { //新鲜的iframe需要加载吗亲？
+
+        var _iframeDoc = getIframeDocment(iframeSeed);
+
+        return _iframeDoc.body ? false : true;
+
+    }
+
+    function iframeDomInsertAfterLater(iframeDom, iframeSeed) { //插入iframe到document之后
+
         var _iframeDoc = getIframeDocment(iframeSeed); //获取iframe下的文档
 
-        selfArg.opts.prevFill = _iframeDom; //记录新创建的iframe
-        addIframeMainContent(_iframeDoc, iframeSeed, selfArg); //为iframe下的文档添加提交内容
+        this.opts.prevFill = iframeDom; //记录新创建的iframe
+        addIframeMainContent(_iframeDoc, iframeSeed, this); //为iframe下的文档添加提交内容
         addIframeDocumentsEvents(_iframeDoc, iframeSeed); //为iframe下的文档添加事件集合
-        addIframeEvents(_iframeDoc, _iframeDom, iframeSeed, selfArg); //为iframe添加事件集合
-
-        return _iframeDom
+        addIframeEvents(_iframeDoc, iframeDom, iframeSeed, this); //为iframe添加事件集合
 
     }
 
@@ -198,11 +226,11 @@ var DbpUpload = (function() {
 
     function addIframeDocumentsEvents(iframeDocment, iframeSeed) { //iframe下documents事件集合
 
-        dispatchEvent(iframeDocment.getElementById(iframeSeed), 'click'); //触发file
-
         addEvent(iframeDocment.getElementById(iframeSeed), 'change', function(e) { //上传filevalue改变监听
             iframeDocment.getElementsByTagName('form')[0].submit();
         });
+
+        dispatchEvent(iframeDocment.getElementById(iframeSeed), 'click'); //触发file
 
     }
 
