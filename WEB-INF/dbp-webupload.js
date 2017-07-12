@@ -34,25 +34,25 @@ var DbpUpload = (function() {
 
     var hasUseFormDate = (function() { //判断是否支持h5 FormDate
 
-        // if (window.FormData) {
+        if (window.FormData) {
 
-        //     return function(trigger) {
+            return function(trigger) {
 
-        //         var _seed = createSeed();
-        //         createFileInput.call(this, this.opts.iframeSignPrefix + 'input-' + _seed, trigger) //创建iframe
+                var _seed = createSeed();
+                createFileInput.call(this, this.opts.iframeSignPrefix + 'input-' + _seed, trigger) //创建iframe
 
-        //     }
+            }
 
-        // } else {
+        } else {
 
-        return function(trigger) {
+            return function(trigger) {
 
-            var _seed = createSeed();
-            createIframe(this.opts.iframeSignPrefix + 'iframe-' + _seed, trigger, this) //创建iframe
+                var _seed = createSeed();
+                createIframe(this.opts.iframeSignPrefix + 'iframe-' + _seed, trigger, this) //创建iframe
+
+            }
 
         }
-
-        // }
 
     })()
 
