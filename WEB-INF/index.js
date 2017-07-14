@@ -82,16 +82,24 @@ window.onload = function() {
 //     }
 // }
 
-var up = new DbpUpload({
+var up = new DbpUpload();
+up.init({
     url: '/upload',
     trigger: 'MyUpDemo',
+    multiple: true,
+    multipleSize: '300kb',
+    accept: 'image/png,image/gif,image/jpg',
+    size: '300kb',
+    onBeforeUpLoad: function(res) {
+        console.log(res)
+    },
     onSuccess: function(res, trigger, event) {
         console.log(res);
     },
     onError: function(a, b, c) {
-
+        console.log(a, b, c);
     }
-});
+})
 
 // var ups = new DbpUpload({
 //     url: '/upload',

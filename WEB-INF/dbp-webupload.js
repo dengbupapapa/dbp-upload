@@ -1,22 +1,44 @@
 var DbpUpload = (function() {
 
-    function DbpUpload(opts) {
+    function DbpUpload() {
 
         this.opts = {
-            url: '' || opts.url,
-            trigger: '' || document.getElementById(opts.trigger),
-            iframeSignPrefix: 'dbp-uploader-' || opts.iframeSignPrefix,
-            onSuccess: opts.onSuccess || null,
-            prevFill: null
+            signPrefix: 'dbp-uploader-',
+            onSuccess: null,
+            onError: null,
+            onBeforeUpLoad: null,
+            prevFill: null,
+            accept: '',
+            multiple: false,
+            size: '',
+            multipleSize: ''
         }
-
-        this.init();
 
     }
 
     DbpUpload.prototype = {
 
-        init: function() {
+        init: function(opts) {
+
+            if (opts.size && !fileSizeParseBit(opts.size)) throw (new Error('size format error! \n example:1kb、1mb、1b')); //size格式错误
+            if (opts.multipleSize && !fileSizeParseBit(opts.multipleSize)) throw (new Error('multipleSize format error! \n example:1kb、1mb、1b')); //size格式错误
+            if (!!!opts.url) throw (new Error('url required!'));
+            if (!!!opts.trigger) throw (new Error('trigger required!'));
+
+            this.opts = {
+                url: opts.url,
+                trigger: document.getElementById(opts.trigger),
+                signPrefix: opts.signPrefix || this.opts.signPrefix,
+                onSuccess: opts.onSuccess || this.opts.onSuccess,
+                onError: opts.onError || this.opts.onError,
+                onBeforeUpLoad: opts.onBeforeUpLoad || this.opts.onBeforeUpLoad,
+                accept: opts.accept || this.opts.accept,
+                multiple: opts.multiple || this.opts.multiple,
+                size: opts.size || this.opts.size,
+                sizeParseBit: opts.size && fileSizeParseBit(opts.size),
+                multipleSize: opts.multipleSize || this.opts.multipleSize,
+                multipleSizeParseBit: opts.multipleSize && fileSizeParseBit(opts.multipleSize),
+            }
 
             var _self = this;
 
@@ -39,7 +61,7 @@ var DbpUpload = (function() {
             return function(trigger) {
 
                 var _seed = createSeed();
-                createFileInput.call(this, this.opts.iframeSignPrefix + 'input-' + _seed, trigger) //创建iframe
+                createFileInput.call(this, this.opts.signPrefix + 'input-' + _seed, trigger) //创建iframe
 
             }
 
@@ -48,7 +70,7 @@ var DbpUpload = (function() {
             return function(trigger) {
 
                 var _seed = createSeed();
-                createIframe(this.opts.iframeSignPrefix + 'iframe-' + _seed, trigger, this) //创建iframe
+                createIframe(this.opts.signPrefix + 'iframe-' + _seed, trigger, this) //创建iframe
 
             }
 
@@ -62,6 +84,84 @@ var DbpUpload = (function() {
 
     }
 
+    function fileSizeParseBit(size) { //文件大小限制转换成bit
+
+        var _size = size || this.opts.size;
+        var _numSize = _size.match(/[\d\.]+/)[0];
+
+        return (new RegExp(/^(([1-9]\d*)|[0])(\.\d+)?MB$/, 'i').test(_size) && _numSize * 1000 * 1000) || (new RegExp(/^(([1-9]\d*)|[0])(\.\d+)?KB$/, 'i').test(_size) && _numSize * 1000) || (new RegExp(/^(([1-9]\d*)|[0])(\.\d+)?B$/, 'i').test(_size) && _numSize);
+    }
+
+    function fileSizeValidate(file) { //文件大小验证
+
+        var _limitSize = this.opts.sizeParseBit;
+        var _fileSize = file.size;
+
+        return _limitSize > _fileSize;
+
+    }
+
+    function emitterDataBefore(fileList, inputSeed, fd) { //发送数据前验证文件大小
+
+        var uploadFileMultipleSize = 0;
+
+        for (var i in fileList) {
+
+            if (fileList[i].size) { //过滤文件实例
+
+                if (this.opts.size && !fileSizeValidate.call(this, fileList[i])) { //大小是否合适
+
+                    var _onBeforeUpLoad = this.opts.onBeforeUpLoad;
+
+                    if (_onBeforeUpLoad && typeof _onBeforeUpLoad == 'function') { //上传前反馈
+                        _onBeforeUpLoad({
+                            code: 'sizeOverflow',
+                            message: '单个文件大小超出' + this.opts.size
+                        });
+                    }
+
+                    return false;
+
+                }
+
+                uploadFileMultipleSize += fileList[i].size;
+
+                if (this.opts.multiple && this.opts.multipleSize && (uploadFileMultipleSize > this.opts.multipleSizeParseBit)) { //验证多张图片总大小是否超标
+
+                    var _onBeforeUpLoad = this.opts.onBeforeUpLoad;
+
+                    if (_onBeforeUpLoad && typeof _onBeforeUpLoad == 'function') { //上传前反馈
+                        _onBeforeUpLoad({
+                            code: 'sizeOverflow',
+                            message: '多个文件总大小超出' + this.opts.multipleSize
+                        });
+                    }
+
+                    return false;
+
+                }
+
+                if (fd) {
+                    fd.append(inputSeed + createSeed() * createSeed(), fileList[i])
+                }
+
+            }
+
+        }
+
+        return true;
+
+    }
+
+    /*
+        html5版本，功能包括：
+        创建fileinput
+        创建fileinput事件
+        发送xhr
+        文件大小限制
+        是否可多文件
+        可上传的类型
+    */
     function createFileInput(inputSeed, trigger) {
 
         removePrve(this.opts.prevFill); //在做正事之前咱先收拾干干净净好吧
@@ -77,15 +177,19 @@ var DbpUpload = (function() {
     function createFileInputDom(inputSeed) { //创建fileinput
 
         var inputDom;
+        var _multiple = (this.opts.multiple == true) ? 'multiple' : '';
+        var _accept = this.opts.accept;
 
         try {
-            inputDom = document.createElement('<input type="file" id="' + inputSeed + '" name="' + inputSeed + '" style="display:none;">');
+            inputDom = document.createElement('<input type="file" id="' + inputSeed + '" name="' + inputSeed + '" accept="' + _accept + '" ' + _multiple + ' style="display:none;">');
         } catch (e) {
             inputDom = document.createElement('input');
             inputDom.type = 'file';
             inputDom.name = inputSeed;
             inputDom.id = inputSeed;
             inputDom.style.display = 'none';
+            inputDom.accept = _accept;
+            inputDom.multiple = _multiple;
         }
 
         return inputDom
@@ -99,13 +203,15 @@ var DbpUpload = (function() {
         dispatchEvent(fileInputDom, 'click'); //触发file
         addEvent(fileInputDom, 'change', function(e) { //上传filevalue改变监听
 
-            var file = this.files[0];
-            var xhr = new XMLHttpRequest();
+            var fileList = this.files;
             var fd = new window.FormData();
 
-            requestFileInputEvent.call(_self, xhr, this, file);
+            if (!emitterDataBefore.call(_self, fileList, inputSeed, fd)) return false;
 
-            fd.append(inputSeed, file);
+            var xhr = new XMLHttpRequest();
+
+            requestFileInputEvent.call(_self, xhr, this, fileList);
+
             xhr.open('POST', _self.opts.url);
             xhr.send(fd);
 
@@ -118,15 +224,29 @@ var DbpUpload = (function() {
         var _self = this;
 
         xhr.onload = function(res) {
-            _self.opts.onSuccess(res.currentTarget.response, _self.opts.trigger, file);
-            _self.opts.prevFill = null;
+
+            var _onSuccess = _self.opts.onSuccess;
+
+            if (_onSuccess && typeof _onSuccess == 'function') {
+                _self.opts.onSuccess(res.currentTarget.response, _self.opts.trigger, file);
+                _self.opts.prevFill = null;
+            }
+
             deleteElement(fileInputDom); //删除iframe
+
         }
 
         xhr.onerror = function(a, b, c) {
-            _self.onError(a, b, c);
-            _self.opts.prevFill = null;
+
+            var _onErrors = _self.opts.onErrors;
+
+            if (_onErrors && typeof _onErrors == 'function') {
+                _self.onError(a, b, c);
+                _self.opts.prevFill = null;
+            }
+
             deleteElement(fileInputDom); //删除iframe
+
         }
 
     }
@@ -139,6 +259,15 @@ var DbpUpload = (function() {
 
     }
 
+    /*
+        兼容版本，功能包括：
+        创建iframe
+        创建iframe事件
+        移除iframe
+        文件大小限制
+        是否可多文件
+        可上传的类型
+    */
     function createIframe(iframeSeed, trigger, selfArg) {
 
         removePrve(selfArg.opts.prevFill); //在做正事之前咱先收拾干干净净好吧
@@ -181,7 +310,7 @@ var DbpUpload = (function() {
 
         this.opts.prevFill = iframeDom; //记录新创建的iframe
         addIframeMainContent(_iframeDoc, iframeSeed, this); //为iframe下的文档添加提交内容
-        addIframeDocumentsEvents(_iframeDoc, iframeSeed); //为iframe下的文档添加事件集合
+        addIframeDocumentsEvents.call(this, _iframeDoc, iframeSeed); //为iframe下的文档添加事件集合
         addIframeEvents(_iframeDoc, iframeDom, iframeSeed, this); //为iframe添加事件集合
 
     }
@@ -215,10 +344,12 @@ var DbpUpload = (function() {
         var _hostname = location.hostname;
         var _port = location.port;
         var _protocol = location.protocol;
+        var _multiple = (selfArg.opts.multiple == true) ? 'multiple' : '';
+        var _accept = selfArg.opts.accept;
 
         iframeDocment.body.innerHTML = [
             '<form action="' + _protocol + '//' + _hostname + (_port ? ':' + _port : '') + selfArg.opts.url + '" enctype="multipart/form-data" method="post">',
-            '<input type="file" name="' + iframeSeed + '" id="' + iframeSeed + '">',
+            '<input type="file" name="' + iframeSeed + '" id="' + iframeSeed + '" ' + _multiple + ' accept="' + _accept + '">',
             '</form>'
         ].join('');
 
@@ -226,8 +357,16 @@ var DbpUpload = (function() {
 
     function addIframeDocumentsEvents(iframeDocment, iframeSeed) { //iframe下documents事件集合
 
+        var _self = this;
+
         addEvent(iframeDocment.getElementById(iframeSeed), 'change', function(e) { //上传filevalue改变监听
+
+            var fileList = this.files;
+
+            if (!emitterDataBefore.call(_self, fileList)) return false;
+
             iframeDocment.getElementsByTagName('form')[0].submit();
+
         });
 
         dispatchEvent(iframeDocment.getElementById(iframeSeed), 'click'); //触发file
@@ -276,6 +415,9 @@ var DbpUpload = (function() {
 
     }
 
+    /*
+        公共兼容属性
+    */
     var addEvent = (function() { //事件兼容
 
         if (document.addEventListener) {
