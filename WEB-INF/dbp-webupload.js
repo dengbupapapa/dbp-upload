@@ -413,7 +413,7 @@ var DbpUpload = (function() {
                     if (_onBeforeUpLoad && typeof _onBeforeUpLoad == 'function') { //上传前反馈
                         _onBeforeUpLoad({
                             code: 'getSizeIeAuthorityLimit',
-                            message: '如果你用的是ie8 请将安全级别调低！',
+                            message: '如果你用的是ie8,请将安全级别调低！',
                         });
                     }
 
@@ -432,6 +432,9 @@ var DbpUpload = (function() {
                 return false;
 
             }
+
+            this.opts.alreadyUpLoadTotalNumber++;
+            this.opts.alreadyUpLoadTotalSize += _size;
 
             iframeDocment.getElementsByTagName('form')[0].submit();
 
