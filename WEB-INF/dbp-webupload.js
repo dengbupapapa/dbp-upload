@@ -11,7 +11,9 @@ var DbpUpload = (function() {
             accept: '',
             multiple: false,
             size: '',
-            multipleSize: ''
+            multipleSize: '',
+            alreadyUpLoadTotalNumber: 0,
+            alreadyUpLoadTotalSize: 0
         }
 
     }
@@ -51,6 +53,35 @@ var DbpUpload = (function() {
             // listenerIframe(this); //监视iframe操作你的主人有没有下定决心啊
 
         },
+        setOnSuccess: function(cb) {
+            return this.opts.onSuccess = cb;
+        },
+        setOnError: function(cb) {
+            return this.opts.onError = cb;
+        },
+        setOnBeforeUpLoad: function(cb) {
+            return this.opts.onBeforeUpLoad = cb;
+        },
+        setAccept: function(val) {
+            return this.opts.accept = val;
+        },
+        setMultiple: function(val) {
+            return this.opts.multiple = val;
+        },
+        setSize: function(size) {
+            if (opts.size && !fileSizeParseBit(opts.size)) throw (new Error('size format error! \n example:1kb、1mb、1b')); //size格式错误
+            return this.opts.size = val;
+        },
+        setMultipleSize: function(multipleSize) {
+            if (opts.multipleSize && !fileSizeParseBit(opts.multipleSize)) throw (new Error('multipleSize format error! \n example:1kb、1mb、1b')); //size格式错误
+            return this.opts.multipleSize = val;
+        },
+        getAlreadyUpLoadTotalNumber: function() {
+            return this.opts.alreadyUpLoadTotalNumber;
+        },
+        getAlreadyUpLoadTotalSize: function() {
+            return this.opts.alreadyUpLoadTotalSize;
+        }
 
     }
 
@@ -104,6 +135,7 @@ var DbpUpload = (function() {
     function emitterDataBefore(fileList, inputSeed, fd) { //发送数据前验证文件大小
 
         var uploadFileMultipleSize = 0;
+        var _onBeforeUpLoad = this.opts.onBeforeUpLoad;
 
         for (var i in fileList) {
 
@@ -111,12 +143,11 @@ var DbpUpload = (function() {
 
                 if (this.opts.size && !fileSizeValidate.call(this, fileList[i])) { //大小是否合适
 
-                    var _onBeforeUpLoad = this.opts.onBeforeUpLoad;
-
                     if (_onBeforeUpLoad && typeof _onBeforeUpLoad == 'function') { //上传前反馈
                         _onBeforeUpLoad({
                             code: 'sizeOverflow',
-                            message: '单个文件大小超出' + this.opts.size
+                            message: '单个文件大小超出' + this.opts.size,
+                            limit: this.opts.size
                         });
                     }
 
@@ -128,18 +159,20 @@ var DbpUpload = (function() {
 
                 if (this.opts.multiple && this.opts.multipleSize && (uploadFileMultipleSize > this.opts.multipleSizeParseBit)) { //验证多张图片总大小是否超标
 
-                    var _onBeforeUpLoad = this.opts.onBeforeUpLoad;
-
                     if (_onBeforeUpLoad && typeof _onBeforeUpLoad == 'function') { //上传前反馈
                         _onBeforeUpLoad({
                             code: 'sizeOverflow',
-                            message: '多个文件总大小超出' + this.opts.multipleSize
+                            message: '多个文件总大小超出' + this.opts.multipleSize,
+                            limit: this.opts.multipleSize
                         });
                     }
 
                     return false;
 
                 }
+
+                this.opts.alreadyUpLoadTotalNumber++;
+                this.opts.alreadyUpLoadTotalSize += fileList[i].size;
 
                 if (fd) {
                     fd.append(inputSeed + createSeed() * createSeed(), fileList[i])
@@ -362,8 +395,43 @@ var DbpUpload = (function() {
         addEvent(iframeDocment.getElementById(iframeSeed), 'change', function(e) { //上传filevalue改变监听
 
             var fileList = this.files;
+            var filePath = this.value;
+            var _size = this.opts.size;
+            var fileSystem;
 
-            if (!emitterDataBefore.call(_self, fileList)) return false;
+            var file = fileSystem.GetFile(filePath);
+            var fileSize = file.Size;
+
+            if (_size && _size < fileSize) { //大小是否合适
+
+                try {
+
+                    fileSystem = new ActiveXObject('Scripting.FileSystemObject');
+
+                } catch (e) {
+
+                    if (_onBeforeUpLoad && typeof _onBeforeUpLoad == 'function') { //上传前反馈
+                        _onBeforeUpLoad({
+                            code: 'getSizeIeAuthorityLimit',
+                            message: '如果你用的是ie8 请将安全级别调低！',
+                        });
+                    }
+
+                    return false;
+
+                }
+
+                if (_onBeforeUpLoad && typeof _onBeforeUpLoad == 'function') { //上传前反馈
+                    _onBeforeUpLoad({
+                        code: 'sizeOverflow',
+                        message: '单个文件大小超出' + this.opts.size,
+                        limit: this.opts.size
+                    });
+                }
+
+                return false;
+
+            }
 
             iframeDocment.getElementsByTagName('form')[0].submit();
 
